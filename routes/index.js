@@ -89,6 +89,7 @@ router.post('/user/login', async function (req, res) {
     console.log("Login attempt:", email, password);
 
     const foundUser = await User.findOne({ email }).exec();
+    console.log("This is loged in user ID")
 
     if (!foundUser) {
       return res.status(400).json({ msg: "Invalid email, user not found" });
@@ -100,7 +101,7 @@ router.post('/user/login', async function (req, res) {
       return res.status(400).json({ msg: "Invalid password" });
     }
 
-    const token = jwt.sign({ email }, 'webtoken', {
+    const token = jwt.sign({email}, 'webtoken', {
       expiresIn: '1d',
     });
 
@@ -122,8 +123,12 @@ router.post('/user/login', async function (req, res) {
 
 //profile
 router.post('/user/profile', authenticateToken, async function (req, res) {
-  const loggedinuser = await User.findOne({ email: req.user.email }).exec()
-  console.log(loggedinuser);
+  const loggedinuser = await User.findOne({ email: req.user.email}).exec()
+  if (!loggedinuser) {
+    console.error("No logged-in user found");
+    return;
+  }
+  console.log("This is Loggedin user",loggedinuser);
   return res.status(200).json({ msg: "logged in user", loggedinuser })
 })
 
@@ -213,5 +218,46 @@ router.get('/user/allapplied', authenticateToken, async function (req, res) {
   console.log("This is all applied jobs",appliedJobs)
   return res.status(200).json({ message: 'Application successful', appliedJobs });
 })
+
+
+
+router.put('/user/updateuser/:id', upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'userResumeURL', maxCount: 1 }
+]), async function (req, res) {
+  try {
+    const { name, email } = req.body;
+    
+    const updateData = {
+      name,
+      email,
+    };
+
+    // If files are uploaded, add their Cloudinary URLs
+    if (req.files['profileImage']) {
+      updateData.profileImage = req.files['profileImage'][0].path;
+    }
+
+    if (req.files['userResumeURL']) {
+      updateData.userResumeURL = req.files['userResumeURL'][0].path;
+    }
+
+    // Update user in DB
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router;

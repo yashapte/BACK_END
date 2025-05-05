@@ -20,7 +20,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
-    let folder = 'General_Uploads'; 
+    let folder = 'General_Uploads';
 
     if (file.fieldname === 'profileImage') {
       folder = 'User_Profile_Image';
@@ -30,8 +30,8 @@ const storage = new CloudinaryStorage({
 
     return {
       folder: folder,
-      allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'], 
-      resource_type: 'auto', 
+      allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
+      resource_type: 'auto',
     };
   }
 });
@@ -39,47 +39,47 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
-router.post('/register/rc', upload.fields([{ name: 'profileImage', maxCount: 1 },{ name: 'userResumeURL', maxCount: 1 }]),
-async function (req, res) {
-try {
-  
-
-  console.log("Admin register route");
-  
-  var { name, email, password } = req.body;
+router.post('/register/rc', upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'userResumeURL', maxCount: 1 }]),
+  async function (req, res) {
+    try {
 
 
-  const profileImageUrl = req.files['profileImage']?.[0];
-  const resumeFile = req.files['userResumeURL']?.[0]; 
+      console.log("Admin register route");
 
-  const prfimg = profileImageUrl?.path;
-  const userRsm = resumeFile?.path;
+      var { name, email, password } = req.body;
 
 
-  const founduser = await User.findOne({ email: req.body.email }).exec();
+      const profileImageUrl = req.files['profileImage']?.[0];
+      const resumeFile = req.files['userResumeURL']?.[0];
 
-  if (founduser) {
-    res.json({ "msg": "Admin already registered with the mail" });
-  } else {
-    var newuser = new User({
+      const prfimg = profileImageUrl?.path;
+      const userRsm = resumeFile?.path;
 
-      isAdmin : true,
-      name,
-      email,
-      password: changepassword(password),
-      profileImage: prfimg,
-      userResumeURL: userRsm
-    });
-    newuser.save();
-    res.status(200).json(newuser);
-  }
-} catch (error) {
-  console.log(error.message)
-}
 
-})
+      const founduser = await User.findOne({ email: req.body.email }).exec();
 
-router.post('/login/rc',async function (req, res) {
+      if (founduser) {
+        res.json({ "msg": "Admin already registered with the mail" });
+      } else {
+        var newuser = new User({
+
+          isAdmin: true,
+          name,
+          email,
+          password: changepassword(password),
+          profileImage: prfimg,
+          userResumeURL: userRsm
+        });
+        newuser.save();
+        res.status(200).json(newuser);
+      }
+    } catch (error) {
+      console.log(error.message)
+    }
+
+  })
+
+router.post('/login/rc', async function (req, res) {
   try {
 
     const { email, password } = req.body
@@ -98,7 +98,7 @@ router.post('/login/rc',async function (req, res) {
       return res.status(400).json({ msg: "Invalid email user not found" });
     } else {
 
-      const token = jwt.sign({email}, 'webtoken', { expiresIn: "1d" })
+      const token = jwt.sign({ email }, 'webtoken', { expiresIn: "1d" })
       res.cookie('Token', token, {
         httpOnly: true,
         sameSite: 'Lax',
@@ -114,7 +114,11 @@ router.post('/login/rc',async function (req, res) {
 })
 
 router.post('/profile/rc', authenticateToken, async function (req, res) {
-  const loggedinuser = await User.findOne({email: req.user.email}).exec()
+  const loggedinuser = await User.findOne({ email: req.user.email }).exec()
+  if (!loggedinuser) {
+    console.error("No logged-in user found");
+    return;
+  }
   console.log(loggedinuser);
   return res.status(200).json({ msg: "logged in user", loggedinuser })
 })
@@ -127,9 +131,9 @@ router.get('/alljobs', async function (req, res) {
     .populate('applicants.userid', 'name email userResumeURL')
     .exec();
 
-    console.log("This is after populate",jobs)
-    reversedarray= jobs.reverse();
-  console.log("Populated jobs:", JSON.stringify(jobs, null, 2)); 
+  console.log("This is after populate", jobs)
+  reversedarray = jobs.reverse();
+  console.log("Populated jobs:", JSON.stringify(jobs, null, 2));
   res.json({ alljobs: reversedarray });
 
 })
@@ -157,7 +161,7 @@ router.post('/createjob', async function (req, res) {
 })
 
 
-router.put('/updatejob/:id', async function (req, res){
+router.put('/updatejob/:id', async function (req, res) {
   const { id } = req.params;
   const { jobname, jd } = req.body;
 
@@ -172,27 +176,13 @@ router.put('/updatejob/:id', async function (req, res){
       return res.status(404).json({ error: 'Job not found' });
     }
 
-   return res.status(200).json({ message: 'Job updated successfully', job: updatedJob });
+    return res.status(200).json({ message: 'Job updated successfully', job: updatedJob });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error while updating job' });
   }
 });
 
-// router.post('/allapplicants/rc', async function (req, res) {
-
-//   const jobs = await Job.find().populate('applicants', 'name email').exec();
-//   res.json({ alljobs: jobs });
-//   const allApplicants = jobs.map(job => job.applicants.map(applicant => applicant.toString()));
-//   const flatApplicants = [].concat(...allApplicants);
-//   console.log('Applicant IDs:', flatApplicants);
-//   res.json({ applicantIds: flatApplicants });
-//   const applicantdetails = flatApplicants.map(async (items)=>{
-//     const a = await User.findById(items).exec();
-//     console.log("Found ",a.name)
-//   })
-
-// })
 
 router.delete('/job/delete/:id', authenticateToken, async (req, res) => {
   try {
@@ -210,5 +200,45 @@ router.delete('/job/delete/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ msg: 'Server error' });
   }
 });
+
+router.put('/adminupdateuser/:id', upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'userResumeURL', maxCount: 1 }
+]), async function (req, res) {
+  try {
+    const { name, email } = req.body;
+    
+    const updateData = {
+      name,
+      email,
+    };
+
+    // If files are uploaded, add their Cloudinary URLs
+    if (req.files['profileImage']) {
+      updateData.profileImage = req.files['profileImage'][0].path;
+    }
+
+    if (req.files['userResumeURL']) {
+      updateData.userResumeURL = req.files['userResumeURL'][0].path;
+    }
+
+    // Update user in DB
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 module.exports = router;
